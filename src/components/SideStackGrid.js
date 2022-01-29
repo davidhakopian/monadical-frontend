@@ -8,7 +8,9 @@ class SideStackGrid extends Component {
             gridSize: 7,
             grid: this.generateEmptyGridArray(7),
             playerSymbol: 'X',
-            yourTurn: props.currentPlayer === 1
+            yourTurn: props.currentPlayer === 1,
+            gameOver: false,
+            turnNumber: 1
         }
         this.props.client.onmessage = (message) => {
             var data = JSON.parse(message.data)
@@ -16,38 +18,10 @@ class SideStackGrid extends Component {
                 this.selectCell(data.x, data.y)
                 this.setState({
                     yourTurn: true
-                }, this.updateClientStatusOnTurnChange) 
+                }) 
             }     
         }
-        this.updateClientStatusOnTurnChange()
-    }
-
-    updateClientStatusOnTurnChange = () => {
-        var message = this.state.yourTurn ? "It's your turn" : "Your opponent is thinking..."
-        this.props.updateClientStatus(message)
-    }
-
-    generateEmptyGridArray = (size) => {
-        var grid = []
-        for(var i=0; i < size; i++){
-            grid.push(this.generateEmptyGridArrayRow(size))
-        }
-        return grid
-    }
-
-    generateEmptyGridArrayRow = (size) => {
-        var row = []
-        for(var i=0; i < size; i++){
-            var available = false;
-            if(i===0 || i===size-1){
-                available = true
-            }
-            row.push({
-                canBeSelected: available,
-                value: null,
-            })
-        }
-        return row
+        this.props.updateClientStatus(this.state.yourTurn ? "It's your turn" : "Waiting for opponent to make a move...")
     }
 
     handleMove = (x,y) => {
@@ -65,10 +39,9 @@ class SideStackGrid extends Component {
         }))
 
         this.selectCell(x, y)
-
         this.setState({
             yourTurn: false
-        }, this.updateClientStatusOnTurnChange)
+        })
     }
 
     selectCell = (x, y) => {
@@ -79,11 +52,11 @@ class SideStackGrid extends Component {
         grid[y][x].value = this.state.playerSymbol
         grid[y][x].canBeSelected = false
 
-        //Check if game over
+        //Check if game is over 
         if(this.gameOver(x, y)){
-            this.setState({
-                grid: this.generateEmptyGridArray(this.state.gridSize)
-            })
+            //this.setState({
+            //    grid: this.generateEmptyGridArray(this.state.gridSize)
+            //})
             return
         }
 
@@ -93,15 +66,12 @@ class SideStackGrid extends Component {
         else if(grid[y][x-1] !== undefined && grid[y][x-1].value == null) 
             grid[y][x-1].canBeSelected = true
         
-        //Update and Re-render Grid
+        //Change player turn and Update and Re-render Grid
         this.setState({
-            grid 
-        })
-
-        //Change player turn
-        this.setState({
-            playerSymbol : this.state.playerSymbol === 'X' ? 'O' : 'X'
-        })
+            grid,
+            playerSymbol : this.state.playerSymbol === 'X' ? 'O' : 'X',
+            turnNumber: this.state.turnNumber + 1
+        }, this.props.updateClientStatus(this.state.yourTurn ? "Waiting for opponent's turn..." : "It's your turn"))
     }
 
     gameOver = (x, y) => {
@@ -109,7 +79,17 @@ class SideStackGrid extends Component {
         this.checkSumLeft(x, y) + this.checkSumRight(x, y) >= 3 ||
         this.checkSumTopLeft(x, y) + this.checkSumBottomRight(x, y) >= 3 ||
         this.checkSumBottomLeft(x, y) + this.checkSumTopRight(x, y) >= 3){
-            this.props.updateClientStatus("Game Over: " + this.state.yourTurn ? "You Won!" : "You Lost!")
+            this.setState({
+                gameOver: true
+            })
+            this.props.updateClientStatus("Game Over: " + (this.state.yourTurn ? "You win" : "You lose"))
+            return true
+        }
+        else if(this.state.turnNumber === this.state.gridSize * this.state.gridSize){
+            this.setState({
+                gameOver: true
+            })
+            this.props.updateClientStatus("Game Over: No one wins")
             return true
         }
         return false
@@ -168,8 +148,31 @@ class SideStackGrid extends Component {
         else return 1 + this.checkSumBottomLeft(x-1, y+1)
     }
 
+    generateEmptyGridArray = (size) => {
+        var grid = []
+        for(var i=0; i < size; i++){
+            grid.push(this.generateEmptyGridArrayRow(size))
+        }
+        return grid
+    }
+
+    generateEmptyGridArrayRow = (size) => {
+        var row = []
+        for(var i=0; i < size; i++){
+            var available = false;
+            if(i===0 || i===size-1){
+                available = true
+            }
+            row.push({
+                canBeSelected: available,
+                value: null,
+            })
+        }
+        return row
+    }
+
     render() { 
-        if(this.state.grid != null){
+        if(this.state.grid != null && !this.state.gameOver){
             return (<div>
                 {this.state.grid.map((row, columnIndex) => 
                 <div key={columnIndex}>
