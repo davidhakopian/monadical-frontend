@@ -44,6 +44,18 @@ class SideStackGrid extends Component {
         })
     }
 
+    randomMove = () => {
+        var grid = this.state.grid
+        for(var i = 0; i < this.state.gridSize; i++){
+            for(var j = 0; j < this.state.gridSize; j++){
+                if(grid[i][j].canBeSelected){
+                    this.selectCell(j, i)
+                    return
+                }
+            }
+        }
+    }
+
     selectCell = (x, y) => {
         console.log("clicked (" + x + ", " + y + ")")
         var grid = [...this.state.grid]
@@ -53,10 +65,11 @@ class SideStackGrid extends Component {
         grid[y][x].canBeSelected = false
 
         //Check if game is over 
+        console.log("Selected cell: " + x + ", " + y)
         if(this.gameOver(x, y)){
-            //this.setState({
-            //    grid: this.generateEmptyGridArray(this.state.gridSize)
-            //})
+            this.setState({
+                grid: this.generateEmptyGridArray(this.state.gridSize)
+            })
             return
         }
 
@@ -70,8 +83,14 @@ class SideStackGrid extends Component {
         this.setState({
             grid,
             playerSymbol : this.state.playerSymbol === 'X' ? 'O' : 'X',
-            turnNumber: this.state.turnNumber + 1
-        }, this.props.updateClientStatus(this.state.yourTurn ? "Waiting for opponent's turn..." : "It's your turn"))
+            turnNumber: this.state.turnNumber + 1,
+            yourTurn: !this.state.yourTurn
+        }, () => {
+            this.props.updateClientStatus(this.state.yourTurn ? "Waiting for opponent's turn..." : "It's your turn")
+            if(!this.state.yourTurn){
+                this.randomMove()
+            }
+        })
     }
 
     gameOver = (x, y) => {

@@ -24,11 +24,9 @@ class App extends Component {
           currentPlayer: data.player
         })
       }
-      else if(data.type === "startGame"){
-        this.setState({
-          inGame: true
-        })
-      }
+      this.setState({
+        inGame: true
+      })
     }
     client.onopen = () => {
       this.updateClientStatus("Client connected, waiting for player 2 to join...")
